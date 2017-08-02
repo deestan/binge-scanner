@@ -66,7 +66,12 @@ function getAssetToTest(tech) {
 	});
 	if (!mostBad.length)
 		return null;
-	return randy.choice(mostBad);
+
+	const chosen = randy.choice(mostBad);
+
+	chosen[tech].nextTest = Date.now() + 60 * 60 * 1000;
+
+	return chosen;
 }
 
 function testedOk(tech, assetId) {
@@ -95,6 +100,30 @@ app.get('/asset/:tech', function (req, res) {
 	res.send(getAssetToTest(req.params.tech));
 });
 
+app.get('/db', function (req, res) {
+	res.header('content-type', 'application/json');
+	res.send(db);
+});
+
+app.get('/report', function (req, res) {
+	const data = {};
+	Object.keys(db).forEach((assetId) => {
+		const asset = db[assetId];
+		['dash', 'smooth', 'hls'].forEach((tech) => {
+			data[tech] = data[tech] || [];
+			if (asset[tech].testedErrors) {
+				data[tech].push({
+					id: asset.id,
+					title: asset.title,
+					errorStreak: asset[tech].testedErrors
+				});
+			}
+		});
+	});
+	res.header('content-type', 'application/json');
+	res.send(data);
+});
+
 app.post('/ok/:tech', function (req, res) {
 	testedOk(req.params.tech, parseInt(req.body.id), 10);
 	res.send('okay good');
@@ -106,5 +135,5 @@ app.post('/bad/:tech', function (req, res) {
 });
 
 app.listen(3000, function () {
-  console.log('Listening on port 3000. Endpoints:\nGET /asset/[dash|smooth|hls]\nPOST /ok/[dash|smooth|hls]  {"id": assetId}\nPOST /bad/[dash|smooth|hls] {"id": assetId}\n--------')
+  console.log('Listening on port 3000. Endpoints:\nGET /asset/[dash|smooth|hls]\nPOST /ok/[dash|smooth|hls]  {"id": assetId}\nPOST /bad/[dash|smooth|hls] {"id": assetId}\nGET /report\nGET /db\n--------')
 });
