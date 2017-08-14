@@ -79,7 +79,7 @@ function testedOk(tech, assetId) {
 	db[assetId][tech].testedErrors = 0;
 	db[assetId][tech].testedOk += 1;
 	db[assetId][tech].nextTest = Date.now() + 60 * 60 * 1000;
-	db[assetId][tech].lastTest = Date.now().toString();
+	db[assetId][tech].lastTest = Date().toString();
 	saveDb();
 }
 
@@ -91,7 +91,7 @@ function testedBad(tech, assetId) {
 	const nextTestDelayMax = db[assetId][tech].testedErrors * 60 * 60 * 1000;
 	const nextTestDelay = randy.triangular(0, nextTestDelayMax, nextTestDelayMax);
 	db[assetId][tech].nextTest = Date.now() + nextTestDelay;
-	db[assetId][tech].lastTest = Date.now().toString();
+	db[assetId][tech].lastTest = Date().toString();
 	saveDb();
 }
 
@@ -117,7 +117,7 @@ app.get('/report', function (req, res) {
 				data[tech].push({
 					id: asset.id,
 					title: asset.title,
-					lastTest: asset.lastTest,
+					lastTest: asset[tech].lastTest,
 					errorStreak: asset[tech].testedErrors
 				});
 			}
