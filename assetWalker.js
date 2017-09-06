@@ -2,18 +2,24 @@ const async = require('async');
 const fetch = require('fetch').fetchUrl;
 const randy = require('randy');
 
-function feedGetter(feedId) {
+function feedGetter(categoryId, feedId, start=0) {
 	return (onAsset, cb) => {
-		console.log('Getting feed', feedId);
-		const url = `https://sumo.tv2.no/rest/categories/6676667/feeds/${feedId}?start=0&size=25`;
+		console.log('Getting feed', feedId, 'from category', categoryId, 'range', start, '-', (start + 25));
+		const url = `https://sumo.tv2.no/rest/categories/${categoryId}/feeds/${feedId}?start=${start}&size=25`;
 		fetch(url, (err, meta, body) => {
 			if (err) return cb(err);
 			try {
 				const feed = JSON.parse(body.toString());
 				const newTasks = [];
-				feed.content.forEach((show) => {
-					newTasks.push(seasonsGetter(show.id));
-				});
+				if (feed.type == 'show') {
+					feed.content.forEach((show) => {
+						newTasks.push(seasonsGetter(show.id));
+					});
+				} else {
+					feed.content.forEach(onAsset);
+				}
+				if (feed.content.length)
+					newTasks.push(feedGetter(categoryId, feedId, start + 25));
 				cb(null, newTasks);
 			} catch(err) { return cb(err); }
 		});
@@ -38,23 +44,32 @@ function seasonsGetter(showId) {
 	}
 }
 
-function episodesGetter(seasonId) {
+function episodesGetter(seasonId, start=0) {
 	return (onAsset, cb) => {
-		console.log('Getting episodes for', seasonId);
-		const url = `https://sumo.tv2.no/rest/shows/${seasonId}/episodes?start=0&size=100`;
+		console.log('Getting episodes for', seasonId, 'range', start, '-', (start + 25));
+		const url = `https://sumo.tv2.no/rest/shows/${seasonId}/episodes?start=${start}&size=25`;
 		fetch(url, (err, meta, body) => {
 			if (err) return cb(err);
 			try {
 				const data = JSON.parse(body.toString());
 				data.assets.forEach(onAsset);
-				cb(null, []);
+				const getNext = [];
+				if (data.assets.length)
+					getNext.push(episodesGetter(seasonId, start + 25));
+				cb(null, getNext);
 			} catch(err) { return cb(err); }
 		});
 	}
 }
 
 function seed() {
-	return feedGetter('f_88075');
+	return (onAsset, cb) => {
+		console.log('Seeding.');
+		cb(null,  [
+			feedGetter(6676668, 'f_88045'),
+			feedGetter(6676667, 'f_88075')
+		]);
+	}
 }
 
 var jobs = [];
@@ -75,7 +90,7 @@ function start(onAsset) {
 	if (stopped)
 		return;
 	if (jobs.length == 0) {
-		console.log('Job queue empty.  Seeding.');
+		console.log('Job queue empty.  Adding seed.');
 		addJob(seed());
 	}
 	randy.shuffleInplace(jobs);
