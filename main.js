@@ -28,7 +28,13 @@ function saveDb() {
 }
 
 function addAsset(asset) {
-	if (db[asset.id]) return;
+	if (db[asset.id]) {
+		if (db[asset.id].gone) {
+			db[asset.id].gone = false;
+			saveDb();
+		}
+		return;
+	}
 	db[asset.id] = {
 		id: asset.id,
 		title: asset.title,
@@ -53,6 +59,8 @@ function getAssetToTest(tech) {
 	var mostBad = [];
 	Object.keys(db).forEach((key) => {
 		var entry = db[key];
+		if (entry.gone)
+			return;
 		if (entry[tech].nextTest && entry[tech].nextTest > Date.now())
 			return;
 		const badness = entry[tech].testedErrors - entry[tech].testedOk;
@@ -95,6 +103,11 @@ function testedBad(tech, assetId) {
 	saveDb();
 }
 
+function gone(assetId) {
+	db[assetId].gone = true;
+	saveDb();
+}
+
 assetWalker.start(addAsset);
 
 app.get('/asset/:tech', function (req, res) {
@@ -112,6 +125,8 @@ app.get('/report', function (req, res) {
 	Object.keys(db).forEach((assetId) => {
 		const asset = db[assetId];
 		['dash', 'smooth', 'hls'].forEach((tech) => {
+			if (asset.gone)
+				return;
 			data[tech] = data[tech] || [];
 			if (asset[tech].testedErrors) {
 				data[tech].push({
@@ -127,16 +142,21 @@ app.get('/report', function (req, res) {
 	res.send(data);
 });
 
+app.post('/gone', function (req, res) {
+	gone(parseInt(req.body.id, 10));
+	res.send('noted as gone');
+});
+
 app.post('/ok/:tech', function (req, res) {
-	testedOk(req.params.tech, parseInt(req.body.id), 10);
+	testedOk(req.params.tech, parseInt(req.body.id, 10));
 	res.send('okay good');
 });
 
 app.post('/bad/:tech', function (req, res) {
-	testedBad(req.params.tech, parseInt(req.body.id), 10);
+	testedBad(req.params.tech, parseInt(req.body.id, 10));
 	res.send('bad asset noted');
 });
 
 app.listen(3000, function () {
-  console.log('Listening on port 3000. Endpoints:\nGET /asset/[dash|smooth|hls]\nPOST /ok/[dash|smooth|hls]  {"id": assetId}\nPOST /bad/[dash|smooth|hls] {"id": assetId}\nGET /report\nGET /db\n--------')
+  console.log('Listening on port 3000. Endpoints:\nGET /asset/[dash|smooth|hls]\nPOST /ok/[dash|smooth|hls]  {"id": assetId}\nPOST /bad/[dash|smooth|hls] {"id": assetId}\nPOST /gone {"id": assetId}\nGET /report\nGET /db\n--------')
 });
