@@ -42,6 +42,10 @@ function addAsset(asset) {
 			testedOk: 0,
 			testedErrors: 0
 		},
+		'dash-edge': {
+			testedOk: 0,
+			testedErrors: 0
+		},
 		smooth: {
 			testedOk: 0,
 			testedErrors: 0
@@ -124,7 +128,7 @@ app.get('/report', function (req, res) {
 	const data = {};
 	Object.keys(db).forEach((assetId) => {
 		const asset = db[assetId];
-		['dash', 'smooth', 'hls'].forEach((tech) => {
+		['dash', 'dash-edge', 'smooth', 'hls'].forEach((tech) => {
 			if (asset.gone)
 				return;
 			data[tech] = data[tech] || [];
@@ -158,5 +162,5 @@ app.post('/bad/:tech', function (req, res) {
 });
 
 app.listen(3000, function () {
-  console.log('Listening on port 3000. Endpoints:\nGET /asset/[dash|smooth|hls]\nPOST /ok/[dash|smooth|hls]  {"id": assetId}\nPOST /bad/[dash|smooth|hls] {"id": assetId}\nPOST /gone {"id": assetId}\nGET /report\nGET /db\n--------')
+  console.log('Listening on port 3000. Endpoints:\nGET /asset/[dash|smooth|hls]\nPOST /ok/[dash|dash-edge|smooth|hls]  {"id": assetId}\nPOST /bad/[dash|smooth|hls] {"id": assetId}\nPOST /gone {"id": assetId}\nGET /report\nGET /db\n--------')
 });
